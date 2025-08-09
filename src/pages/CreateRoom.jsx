@@ -34,7 +34,7 @@ function CreateRoom() {
             }
 
             localStorage.setItem('username', username);
-            navigate(`/rooms/${data.room.id}`); // kendi route'unuza göre uyarlayın
+            navigate(`/rooms/${data.room.id}`);
         } catch (err) {
             console.error(err);
             setError('Sunucuya bağlanırken hata oluştu.');
