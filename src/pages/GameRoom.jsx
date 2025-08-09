@@ -11,15 +11,14 @@ export default function GameRoom() {
 
     const initialUsername = location.state?.username || localStorage.getItem("username") || "";
     const [username, setUsername] = useState(initialUsername);
-    const [users, setUsers] = useState([]); // beklenen format: [{ id, username, avatarUrl? }, ...]
+    const [users, setUsers] = useState([]);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
- const [isCopied, setIsCopied] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
     const socketRef = useRef(null);
 
-    // Basit hash -> renk fonksiyonu (aynı isme sabit renk üretir)
     const nameToColor = (name) => {
-        if (!name) return "#CBD5E1"; // slate-300 fallback
+        if (!name) return "#CBD5E1";
         let hash = 0;
         for (let i = 0; i < name.length; i++) {
             hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -30,30 +29,24 @@ export default function GameRoom() {
     };
 
     useEffect(() => {
-        // Eğer username yoksa join form sayfasına yönlendir (oda kodu query ile)
         if (!username) {
             navigate(`/join-room?code=${roomId}`);
             return;
         }
 
-        // localStorage'da sakla (yenileme sonrası kullanılmak üzere)
         localStorage.setItem("username", username);
 
-        // socket oluştur
         const socket = io("http://localhost:5001", {
             transports: ["websocket", "polling"],
         });
         socketRef.current = socket;
 
-        // connect olunca join at
         socket.on("connect", () => {
             console.log("Socket connected:", socket.id);
             socket.emit("joinRoom", { roomId, username });
         });
 
-        // Sunucudan gelen güncel liste
         socket.on("updateUserList", (list) => {
-            // Güvenlik: listeyi beklenen formata zorla
             if (Array.isArray(list)) {
                 setUsers(list.map(u => ({ id: u.id, username: u.username, avatarUrl: u.avatarUrl || null })));
             } else {
@@ -63,10 +56,7 @@ export default function GameRoom() {
         });
 
         socket.on("joinError", (payload) => {
-            // örn. { message: "…" }
             setError(payload?.message || "Odaya katılırken hata oluştu.");
-            // isteğe bağlı: yönlendir
-            // navigate(`/join-room?${roomId}`);
         });
 
         socket.on("connect_error", (err) => {
@@ -76,7 +66,6 @@ export default function GameRoom() {
         });
 
         return () => {
-            // leave ve disconnect cleanup
             if (socketRef.current) {
                 try {
                     socketRef.current.emit("leaveRoom", { roomId, username });
@@ -94,7 +83,6 @@ export default function GameRoom() {
             setError("");
             setIsCopied(true);
 
-            // 2 saniye sonra eski haline döndür
             setTimeout(() => {
                 setIsCopied(false);
             }, 2000);
