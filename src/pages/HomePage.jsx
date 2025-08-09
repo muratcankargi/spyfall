@@ -7,7 +7,7 @@ function HomePage() {
                 <Link to="/create-room" className="m-3">
                     <Button color="orange" size="4">Oda Oluştur</Button>
                 </Link>
-                <Link to="rooms">
+                <Link to="join-room">
                     <Button color="cyan" gap="3">Odaya Gir</Button>
                 </Link>
             </Theme>
