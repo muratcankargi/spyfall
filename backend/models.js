@@ -1,5 +1,5 @@
 const pool = require('./db');
-const { generateRoomId } = require('./utils'); // utils'ten import et
+const { generateRoomId } = require('./utils');
 
 /* ----------------------- TYPES ----------------------- */
 const addType = async (title, typeArray) => {
@@ -34,9 +34,50 @@ const addGame = async (spy_id, keyword) => {
     return result.rows[0];
 };
 
+const createRoomWithUser = async (username, type_id = null) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // duplicate kontrolü transaction içinde
+        const check = await client.query('SELECT 1 FROM users WHERE username = $1', [username]);
+        if (check.rowCount > 0) {
+            const err = new Error('Kullanıcı adı zaten mevcut.');
+            err.code = 'DUPLICATE_USERNAME';
+            throw err;
+        }
+
+        const id = generateRoomId();
+        const roomRes = await client.query(
+            'INSERT INTO rooms (id, type_id) VALUES ($1, $2) RETURNING *',
+            [id, type_id]
+        );
+
+        const userRes = await client.query(
+            'INSERT INTO users (username, rooms_id) VALUES ($1, $2) RETURNING *',
+            [username, roomRes.rows[0].id]
+        );
+
+        await client.query('COMMIT');
+        return { room: roomRes.rows[0], user: userRes.rows[0] };
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => { });
+        throw err;
+    } finally {
+        client.release();
+    }
+};
+
+const getRoomById = async (id) => {
+    const result = await pool.query('SELECT * FROM rooms WHERE id = $1', [id]);
+    return result.rows[0] || null;
+};
+
 module.exports = {
     addType,
     addRoom,
     addUser,
-    addGame
+    addGame,
+    createRoomWithUser,
+    getRoomById
 };
