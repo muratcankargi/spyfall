@@ -69,16 +69,31 @@ app.post('/rooms', async (req, res) => {
 app.get('/rooms/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const { username } = req.query; 
+
         const roomRes = await models.getRoomById(id);
         if (!roomRes) {
             return res.status(404).json({ message: 'Oda bulunamadı.' });
         }
-        res.json(roomRes);
+
+        let isOwner = false;
+        if (username) {
+            const user = await models.getUserByUsername(username);
+            if (user && roomRes.owner_id === user.id) {
+                isOwner = true;
+            }
+        }
+
+        res.json({
+            ...roomRes,
+            isOwner
+        });
     } catch (err) {
         console.error('Hata /rooms/:id:', err);
         res.status(500).json({ message: 'Sunucu hatası.' });
     }
 });
+
 
 /* ---------- POST /users ---------- */
 app.post('/users', async (req, res) => {
@@ -172,6 +187,16 @@ io.on("connection", (socket) => {
             }
         }
     });
+});
+
+app.get('/types', async (req, res) => {
+    try {
+        const types = await models.getAllTypes();
+        res.json(types);
+    } catch (err) {
+        console.error('Hata /types GET:', err);
+        res.status(500).json({ message: 'Sunucu hatası.' });
+    }
 });
 
 server.listen(port, () => {

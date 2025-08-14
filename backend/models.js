@@ -73,11 +73,22 @@ const getRoomById = async (id) => {
     return result.rows[0] || null;
 };
 
+async function getUserByUsername(username) {
+    const result = await pool.query(`SELECT * FROM users WHERE username = $1 LIMIT 1`, [username]);
+    return result.rows[0] || null;
+}
+async function getAllTypes() {
+    const result = await pool.query(`SELECT id, title, type FROM types`);
+    return result.rows;
+}
+
 module.exports = {
     addType,
     addRoom,
     addUser,
     addGame,
     createRoomWithUser,
-    getRoomById
+    getRoomById,
+    getUserByUsername,
+    getAllTypes
 };
