@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import * as Avatar from "@radix-ui/react-avatar";
+import GamePlay from "./GamePlay";
 
 export default function GameRoom() {
   const { roomId } = useParams();
@@ -15,9 +16,13 @@ export default function GameRoom() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
-  const [typesData, setTypesData] = useState([]); // backendden gelecek
+  const [typesData, setTypesData] = useState([]);
   const [isOwner, setIsOwner] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameData, setGameData] = useState(null);
   const socketRef = useRef(null);
+
+
 
   const nameToColor = (name) => {
     if (!name) return "#CBD5E1";
@@ -30,7 +35,6 @@ export default function GameRoom() {
     return `hsl(${h}, 65%, 75%)`;
   };
 
-  // Odaya ilk girişte backendden types verilerini çek
   useEffect(() => {
     const fetchTypes = async () => {
       try {
@@ -38,6 +42,19 @@ export default function GameRoom() {
         console.log(res);
         if (!res.ok) throw new Error("Types verisi alınamadı");
         const data = await res.json();
+
+        const normalized = Array.isArray(data)
+          ? data.map((cat) => ({
+            title: cat.title,
+            selected: cat.selected !== false,
+            type: (cat.type || []).map((w) =>
+              typeof w === "string"
+                ? { name: w, selected: true }
+                : { name: w.name, selected: w.selected !== false }
+            ),
+          }))
+          : [];
+
         setTypesData(data);
       } catch (err) {
         console.error(err);
@@ -65,15 +82,11 @@ export default function GameRoom() {
     });
 
     socket.on("updateUserList", (list) => {
-      setUsers(
-        Array.isArray(list)
-          ? list.map((u) => ({
-              id: u.id,
-              username: u.username,
-              avatarUrl: u.avatarUrl || null,
-            }))
-          : []
-      );
+      setUsers(list.map(u => ({
+        id: u.id,
+        username: u.username,
+        avatarUrl: u.avatarUrl || null
+      })));
       setLoading(false);
     });
 
@@ -81,19 +94,30 @@ export default function GameRoom() {
       setError(payload?.message || "Odaya katılırken hata oluştu.");
     });
 
-    socket.on("roomOwner", (ownerName) => {
-      setIsOwner(ownerName === username);
+    socket.on("roomOwner", (payload) => {
+      setIsOwner(!!payload?.isOwner);
     });
 
-    // Sunucudan güncellenmiş types verisi al
     socket.on("typesUpdated", (data) => {
-      setTypesData(data);
+      const normalized = Array.isArray(data)
+        ? data.map((cat) => ({
+          title: cat.title,
+          selected: cat.selected !== false,
+          type: (cat.type || []).map((w) =>
+            typeof w === "string"
+              ? { name: w, selected: true }
+              : { name: w.name, selected: w.selected !== false }
+          ),
+        }))
+        : [];
+      setTypesData(normalized);
     });
 
     socket.on("connect_error", (err) => {
       setError("Sunucuya bağlanırken hata: " + (err?.message || "bilinmeyen"));
       setLoading(false);
     });
+    socket.on("gameStarted", () => setGameStarted(true));
 
     return () => {
       if (socketRef.current) {
@@ -102,6 +126,28 @@ export default function GameRoom() {
       }
     };
   }, [roomId, username, navigate]);
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    socketRef.current.on("updateTypes", ({ updated }) => {
+      setTypesData(updated);
+    });
+
+    return () => {
+      socketRef.current.off("updateTypes");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    socketRef.current.on("gameStarted", (data) => {
+      if (!data) return;
+      setGameData(data); // spyId, keyword, words
+      setGameStarted(true);
+    });
+  }, []);
 
   const copyLink = async () => {
     const link = `${window.location.origin}/rooms/${roomId}`;
@@ -114,16 +160,16 @@ export default function GameRoom() {
     }
   };
 
-  const toggleWord = (title, word) => {
+  const toggleWord = (title, wordName) => {
     if (!isOwner) return;
     const updated = typesData.map((t) =>
       t.title === title
         ? {
-            ...t,
-            type: t.type.map((w) =>
-              w.name === word.name ? { ...w, selected: !w.selected } : w
-            ),
-          }
+          ...t,
+          type: t.type.map((w) =>
+            w.name === wordName ? { ...w, selected: !w.selected } : w
+          ),
+        }
         : t
     );
     setTypesData(updated);
@@ -132,12 +178,43 @@ export default function GameRoom() {
 
   const toggleTitle = (title) => {
     if (!isOwner) return;
-    const updated = typesData.map((t) =>
-      t.title === title ? { ...t, selected: !t.selected } : t
-    );
+    const updated = typesData.map((t) => {
+      if (t.title === title) {
+        const newSelected = !t.selected; 
+        return {
+          ...t,
+          selected: newSelected,
+          type: t.type.map((w) => ({
+            ...w,
+            selected: newSelected,
+          })),
+        };
+      }
+      return t;
+    });
+
     setTypesData(updated);
     socketRef.current.emit("updateTypes", { roomId, updated });
   };
+  const startGame = () => {
+    if (!typesData || typesData.length === 0 || users.length === 0) return;
+
+    const selectedWords = [];
+    typesData.forEach(cat =>
+      cat.type.forEach(w => {
+        if (w.selected) selectedWords.push(w.name);
+      })
+    );
+
+    if (selectedWords.length === 0) return;
+
+    // Casus backend'de seçilecek
+    socketRef.current.emit("startGame", {
+      roomId,
+      words: selectedWords,
+    });
+  };
+
 
   if (!username) return null;
   if (error)
@@ -146,7 +223,16 @@ export default function GameRoom() {
         <div className="bg-red-50 text-red-800 p-4 rounded">{error}</div>
       </div>
     );
-
+  if (gameStarted && gameData) {
+    return (
+      <GamePlay
+        username={username}
+        users={users}
+        roomId={roomId}
+        gameData={gameData}
+      />
+    );
+  }
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <header className="flex items-center justify-between mb-6">
@@ -172,10 +258,20 @@ export default function GameRoom() {
             Ana Sayfa
           </button>
         </div>
+        <div className="flex items-center gap-3">
+          {isOwner && !gameStarted && (
+            <button
+              onClick={startGame}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Oyunu Başlat
+            </button>
+          )}
+
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Kullanıcı listesi */}
         <section>
           <h2 className="text-lg font-medium mb-4">Online Kullanıcılar</h2>
           {loading ? (
@@ -188,7 +284,8 @@ export default function GameRoom() {
                 </li>
               ) : (
                 users.map((player) => (
-                  <li
+
+                  < li
                     key={player.id}
                     className="bg-white rounded-xl shadow-sm p-4 flex flex-col items-center text-center"
                   >
@@ -226,9 +323,13 @@ export default function GameRoom() {
           )}
         </section>
 
-        {/* Kelime seçme */}
         <section>
           <h2 className="text-lg font-medium mb-4">Oyun Kelimeleri</h2>
+          {!isOwner && (
+            <span className="text-xs text-gray-500">
+              (Yalnızca oda sahibi düzenleyebilir)
+            </span>
+          )}
           {typesData.length === 0 ? (
             <p className="text-gray-500">Veriler yükleniyor...</p>
           ) : (
@@ -246,11 +347,10 @@ export default function GameRoom() {
                       disabled={!isOwner}
                     />
                     <span
-                      className={`font-semibold ${
-                        category.selected === false
-                          ? "line-through text-gray-400"
-                          : ""
-                      }`}
+                      className={`font-semibold ${category.selected === false
+                        ? "line-through text-gray-400"
+                        : ""
+                        }`}
                     >
                       {category.title}
                     </span>
@@ -258,13 +358,13 @@ export default function GameRoom() {
                   <div className="flex flex-col gap-1">
                     {category.type.map((word) => (
                       <label
-                        key={word}
+                        key={word.name}
                         className="flex items-center gap-2"
                       >
                         <input
                           type="checkbox"
                           checked={word.selected !== false}
-                          onChange={() => toggleWord(category.title, word)}
+                          onChange={() => toggleWord(category.title, word.name)}
                           disabled={!isOwner}
                         />
                         <span
@@ -274,7 +374,7 @@ export default function GameRoom() {
                               : "text-gray-800"
                           }
                         >
-                          {word}
+                          {word.name}
                         </span>
                       </label>
                     ))}
@@ -285,6 +385,6 @@ export default function GameRoom() {
           )}
         </section>
       </div>
-    </div>
+    </div >
   );
 }
