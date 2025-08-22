@@ -69,7 +69,7 @@ app.post('/rooms', async (req, res) => {
 app.get('/rooms/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { username } = req.query; 
+        const { username } = req.query;
 
         const roomRes = await models.getRoomById(id);
         if (!roomRes) {
@@ -147,27 +147,76 @@ app.post('/create-room', async (req, res) => {
 });
 
 io.on("connection", (socket) => {
-
-    socket.on("joinRoom", ({ roomId, username }) => {
-        if (!roomId || !username) {
-            console.warn("joinRoom eksik param:", { roomId, username, socket: socket.id });
-            return;
-        }
-
-        socket.join(roomId);
-
-        if (!roomUsers[roomId]) roomUsers[roomId] = [];
-
-        if (!roomUsers[roomId].some(u => u.id === socket.id)) {
-            const nameTaken = roomUsers[roomId].some(u => u.username === username);
-            if (nameTaken) {
-                socket.emit("joinError", { message: "Bu kullanıcı adı oda içinde zaten mevcut." });
+    socket.on("joinRoom", async ({ roomId, username }) => {
+        try {
+            if (!roomId || !username) {
+                socket.emit("joinError", { message: "Eksik parametre." });
                 return;
             }
 
-            roomUsers[roomId].push({ id: socket.id, username });
+            const room = await models.getRoomById(roomId);
+            if (!room) {
+                socket.emit("joinError", { message: "Oda bulunamadı." });
+                return;
+            }
+
+            let ownerUser = null;
+            if (room.owner_id) {
+                ownerUser = await models.getUserById(room.owner_id);
+            }
+
+            const isOwner =
+                !!ownerUser &&
+                ownerUser.username?.toLowerCase().trim() === username.toLowerCase().trim();
+
+            socket.data.roomId = roomId;
+            socket.data.username = username;
+            socket.join(roomId);
+
+            if (!roomUsers[roomId]) roomUsers[roomId] = [];
+            if (!roomUsers[roomId].some((u) => u.id === socket.id)) {
+                const nameTaken = roomUsers[roomId].some(
+                    (u) => u.username.toLowerCase().trim() === username.toLowerCase().trim()
+                );
+                if (nameTaken) {
+                    socket.emit("joinError", { message: "Bu kullanıcı adı odada mevcut." });
+                    return;
+                }
+
+                roomUsers[roomId].push({ id: socket.id, username });
+            }
+
+            socket.emit("roomOwner", { isOwner, ownerName: ownerUser?.username || null });
+
+            io.to(roomId).emit("updateUserList", roomUsers[roomId]);
+
+            const types = await models.getAllTypes();
+            socket.emit("typesData", types);
+        } catch (err) {
+            console.error("joinRoom hata:", err);
+            socket.emit("joinError", { message: "Sunucu hatası." });
         }
-        io.to(roomId).emit("updateUserList", roomUsers[roomId]);
+    });
+    socket.on("startGame", async ({ roomId, spyId, keyword, words }) => {
+        try {
+            if (!roomId || !spyId || !keyword || !words) return;
+
+            // DB'ye kaydet
+            await models.addGame(spyId, keyword); // words da gerekirse ekle
+
+            // Tüm odadaki oyunculara gönder
+            io.to(roomId).emit("gameStarted", {
+                spyId,
+                keyword,
+                words
+            });
+        } catch (err) {
+            console.error("startGame hatası:", err);
+        }
+    });
+
+    socket.on("updateTypes", async ({ roomId, updated }) => {
+        io.to(roomId).emit("updateTypes", { updated });
     });
 
     socket.on("leaveRoom", ({ roomId, username }) => {
@@ -188,6 +237,7 @@ io.on("connection", (socket) => {
         }
     });
 });
+
 
 app.get('/types', async (req, res) => {
     try {
