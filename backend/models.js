@@ -27,12 +27,12 @@ const addUser = async (username, rooms_id) => {
 };
 
 /* ----------------------- GAMES ----------------------- */
-const addGame = async (spy_id, keyword) => {
-    const query = 'INSERT INTO games (spy_id, keyword) VALUES ($1, $2) RETURNING *';
-    const values = [spy_id, keyword];
-    const result = await pool.query(query, values);
-    return result.rows[0];
-};
+// const addGame = async (spy_id, keyword) => {
+//     const query = 'INSERT INTO games (spy_id, keyword) VALUES ($1, $2) RETURNING *';
+//     const values = [spy_id, keyword];
+//     const result = await pool.query(query, values);
+//     return result.rows[0];
+// };
 
 const createRoomWithUser = async (username, type_id = null) => {
     const client = await pool.connect();
@@ -46,16 +46,21 @@ const createRoomWithUser = async (username, type_id = null) => {
             err.code = 'DUPLICATE_USERNAME';
             throw err;
         }
+        const userRes = await client.query(
+            'INSERT INTO users (username) VALUES ($1) RETURNING *',
+            [username]
+        );
+        const ownerId = userRes.rows[0].id;
 
         const id = generateRoomId();
         const roomRes = await client.query(
-            'INSERT INTO rooms (id, type_id) VALUES ($1, $2) RETURNING *',
-            [id, type_id]
+            'INSERT INTO rooms (id, type_id, owner_id) VALUES ($1, $2, $3) RETURNING *',
+            [id, type_id, ownerId]
         );
 
-        const userRes = await client.query(
-            'INSERT INTO users (username, rooms_id) VALUES ($1, $2) RETURNING *',
-            [username, roomRes.rows[0].id]
+        await client.query(
+            'UPDATE users SET rooms_id = $1 WHERE id = $2',
+            [roomRes.rows[0].id, ownerId]
         );
 
         await client.query('COMMIT');
@@ -77,9 +82,33 @@ async function getUserByUsername(username) {
     const result = await pool.query(`SELECT * FROM users WHERE username = $1 LIMIT 1`, [username]);
     return result.rows[0] || null;
 }
+
 async function getAllTypes() {
-    const result = await pool.query(`SELECT id, title, type FROM types`);
-    return result.rows;
+    const res = await pool.query("SELECT title, type FROM types");
+    return res.rows.map((row) => ({
+        title: row.title,
+        selected: true,
+        type: (row.type || []).map((name) => ({ name, selected: true })),
+    }));
+};
+async function getUserById(id) {
+    const res = await pool.query(
+        "SELECT id, username FROM users WHERE id = $1 LIMIT 1",
+        [id]
+    );
+    return res.rows[0] || null;
+};
+async function addGame(spy_id, keyword) {
+    const client = await pool.connect();
+    try {
+        const res = await client.query(
+            `INSERT INTO games (spy_id, keyword) VALUES ($1::uuid, $2) RETURNING *`,
+            [spy_id, keyword]
+        );
+        return res.rows[0];
+    } finally {
+        client.release();
+    }
 }
 
 module.exports = {
@@ -90,5 +119,6 @@ module.exports = {
     createRoomWithUser,
     getRoomById,
     getUserByUsername,
-    getAllTypes
+    getAllTypes,
+    getUserById
 };
