@@ -144,7 +144,7 @@ export default function GameRoom() {
 
     socketRef.current.on("gameStarted", (data) => {
       if (!data) return;
-      setGameData(data); // spyId, keyword, words
+      setGameData(data);
       setGameStarted(true);
     });
   }, []);
@@ -180,7 +180,7 @@ export default function GameRoom() {
     if (!isOwner) return;
     const updated = typesData.map((t) => {
       if (t.title === title) {
-        const newSelected = !t.selected; 
+        const newSelected = !t.selected;
         return {
           ...t,
           selected: newSelected,
@@ -196,6 +196,7 @@ export default function GameRoom() {
     setTypesData(updated);
     socketRef.current.emit("updateTypes", { roomId, updated });
   };
+
   const startGame = () => {
     if (!typesData || typesData.length === 0 || users.length === 0) return;
 
@@ -208,11 +209,11 @@ export default function GameRoom() {
 
     if (selectedWords.length === 0) return;
 
-    // Casus backend'de seçilecek
     socketRef.current.emit("startGame", {
       roomId,
       words: selectedWords,
     });
+    
   };
 
 
