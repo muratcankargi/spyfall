@@ -148,7 +148,24 @@ app.post('/create-room', async (req, res) => {
 
 io.on("connection", (socket) => {
     socket.on("joinRoom", async ({ roomId, username }) => {
+
         try {
+            const user = await models.getUserByUsername(username);
+            if (!user) {
+                socket.emit("joinError", { message: "Kullanıcı bulunamadı." });
+                return;
+            }
+
+            if (!roomUsers[roomId]) roomUsers[roomId] = [];
+
+            const nameTaken = roomUsers[roomId].some(
+                (u) => u.username.toLowerCase().trim() === username.toLowerCase().trim()
+            );
+            if (nameTaken) {
+                socket.emit("joinError", { message: "Bu kullanıcı adı odada mevcut." });
+                return;
+            }
+
             if (!roomId || !username) {
                 socket.emit("joinError", { message: "Eksik parametre." });
                 return;
@@ -183,7 +200,7 @@ io.on("connection", (socket) => {
                     return;
                 }
 
-                roomUsers[roomId].push({ id: socket.id, username });
+                roomUsers[roomId].push({ id: socket.id, username, userId: user.id });
             }
 
             socket.emit("roomOwner", { isOwner, ownerName: ownerUser?.username || null });
@@ -197,18 +214,51 @@ io.on("connection", (socket) => {
             socket.emit("joinError", { message: "Sunucu hatası." });
         }
     });
-    socket.on("startGame", async ({ roomId, spyId, keyword, words }) => {
+
+    socket.on("joinRoom", async ({ roomId, username }) => {
+
+    });
+
+    // socket.on("startGame", async ({ roomId, spyId, keyword, words }) => {
+    //     try {
+    //         if (!roomId || !spyId || !keyword || !words) return;
+
+    //         // DB'ye kaydet
+    //         await models.addGame(spyId, keyword); // words da gerekirse ekle
+
+    //         // Tüm odadaki oyunculara gönder
+    //         io.to(roomId).emit("gameStarted", {
+    //             spyId,
+    //             keyword,
+    //             words
+    //         });
+    //     } catch (err) {
+    //         console.error("startGame hatası:", err);
+    //     }
+    // });
+
+    socket.on("startGame", async ({ roomId, words }) => {
         try {
-            if (!roomId || !spyId || !keyword || !words) return;
+            const usersInRoom = roomUsers[roomId];
+            if (!usersInRoom || usersInRoom.length === 0) return;
 
-            // DB'ye kaydet
-            await models.addGame(spyId, keyword); // words da gerekirse ekle
+            // Rastgele casus seç
+            const randomUser = usersInRoom[Math.floor(Math.random() * usersInRoom.length)];
+            const randomKeyword = words[Math.floor(Math.random() * words.length)];
+            let randomSpyKeyword = words[Math.floor(Math.random() * words.length)];
+            while (randomKeyword === randomSpyKeyword) {
+                randomSpyKeyword = words[Math.floor(Math.random() * words.length)];
+            }
 
-            // Tüm odadaki oyunculara gönder
+            // DB’ye kaydet
+            await models.addGame(randomUser.userId, randomKeyword);
+            const spy = await models.getUserById(randomUser.userId);
+            // Tüm odadakilere gönder
             io.to(roomId).emit("gameStarted", {
-                spyId,
-                keyword,
-                words
+                spy_username: spy.username,  // DB uuid
+                keyword: randomKeyword,
+                spy_keyword: randomSpyKeyword,
+                words: words.map((w) => ({ name: w, selected: true }))
             });
         } catch (err) {
             console.error("startGame hatası:", err);
