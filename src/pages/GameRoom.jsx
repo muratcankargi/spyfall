@@ -22,8 +22,6 @@ export default function GameRoom() {
   const [gameData, setGameData] = useState(null);
   const socketRef = useRef(null);
 
-
-
   const nameToColor = (name) => {
     if (!name) return "#CBD5E1";
     let hash = 0;
@@ -39,7 +37,6 @@ export default function GameRoom() {
     const fetchTypes = async () => {
       try {
         const res = await fetch(`http://localhost:5001/types`);
-        console.log(res);
         if (!res.ok) throw new Error("Types verisi alınamadı");
         const data = await res.json();
 
@@ -213,7 +210,7 @@ export default function GameRoom() {
       roomId,
       words: selectedWords,
     });
-    
+
   };
 
 
@@ -231,6 +228,7 @@ export default function GameRoom() {
         users={users}
         roomId={roomId}
         gameData={gameData}
+        isOwner={isOwner}
       />
     );
   }
