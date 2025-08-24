@@ -110,7 +110,29 @@ async function addGame(spy_id, keyword) {
         client.release();
     }
 }
+async function getDataByRoomId(roomId) {
+        const client = await pool.connect();
+    try {
+        const roomRes = await pool.query(
+            'SELECT id, owner_id FROM rooms WHERE id = $1',
+            [roomId]
+        );
+        if (roomRes.rows.length === 0) return null;
 
+        const playersRes = await pool.query(
+            'SELECT id, username FROM players WHERE room_id = $1',
+            [roomId]
+        );
+
+        return {
+            owner_id: roomRes.rows[0].owner_id,
+            players: playersRes.rows,
+        };
+    } catch (err) {
+        console.error('getDataByRoomId error:', err);
+        return null;
+    }
+}
 module.exports = {
     addType,
     addRoom,
@@ -120,5 +142,6 @@ module.exports = {
     getRoomById,
     getUserByUsername,
     getAllTypes,
-    getUserById
+    getUserById,
+    getDataByRoomId
 };
