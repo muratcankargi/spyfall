@@ -18,8 +18,6 @@ function CreateRoom() {
 
         setLoading(true);
         try {
-
-
             const res = await fetch(`${API_URL}/create-room`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
