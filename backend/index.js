@@ -274,7 +274,7 @@ io.on("connection", (socket) => {
             io.to(roomId).emit("voteResults", results);
         }
     });
-    socket.on("endGame", ({ roomId }) => {
+    socket.on("endGame", async ({ roomId }) => {
         const room = await models.getDataByRoomId(roomId);
 
         if (!room) return;
