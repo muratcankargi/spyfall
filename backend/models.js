@@ -120,7 +120,7 @@ async function getDataByRoomId(roomId) {
         if (roomRes.rows.length === 0) return null;
 
         const playersRes = await pool.query(
-            'SELECT id, username FROM players WHERE room_id = $1',
+            'SELECT id, username FROM users WHERE rooms_id = $1',
             [roomId]
         );
 
