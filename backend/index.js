@@ -278,87 +278,222 @@ io.on("connection", (socket) => {
         const room = await models.getDataByRoomId(roomId);
 
         if (!room) return;
-        console.log(users[0].id);
 
         // Herkese oy anketi gönder
-        room.users.forEach(user => {
-            io.to(user.id).emit("showVote", {
-                players: room.users.map(u => ({ id: u.id, username: u.username })),
+        room.players.forEach(user => {
+            io.emit("showVote", {
+                players: room.players.map(u => ({ id: u.id, username: u.username })),
             });
         });
     });
 
+    // socket.on("disconnect", () => {
+    //     for (const roomId in roomUsers) {
+    //         const index = roomUsers[roomId].findIndex(u => u.id === socket.id);
+    //         if (index !== -1) {
+    //             roomUsers[roomId].splice(index, 1);
+    //             io.to(roomId).emit("updateUserList", roomUsers[roomId]);
+    //         }
+    //     }
+    // });
     socket.on("disconnect", () => {
+        console.log("Socket disconnected:", socket.id);
+
+        // RoomUsers'dan çıkar
         for (const roomId in roomUsers) {
             const index = roomUsers[roomId].findIndex(u => u.id === socket.id);
             if (index !== -1) {
                 roomUsers[roomId].splice(index, 1);
                 io.to(roomId).emit("updateUserList", roomUsers[roomId]);
+
+                // Eğer odada kimse kalmadıysa timer'ı temizle
+                if (roomUsers[roomId].length === 0) {
+                    const roomData = rooms.get(roomId);
+                    if (roomData && roomData.timer && roomData.timer.interval) {
+                        clearInterval(roomData.timer.interval);
+                        rooms.delete(roomId);
+                        console.log(`Room ${roomId} cleaned up - no users left`);
+                    }
+                }
             }
         }
     });
-    let rooms = {};
+    // const rooms = new Map();
+
+    // socket.on("startTimer", async ({ roomId, duration, isOwner }) => {
+
+    //     let room = await models.getRoomById(roomId);
+    //     console.log(room);
+
+    //     room.timer = {
+    //         timeLeft: duration,
+    //         running: false,
+    //         interval: null
+    //     };
+    //     rooms.set(roomId, room);
+    //     console.log(rooms);
+    //     // if (!isOwner) return; # auth user
+
+    //     room.timer.timeLeft = duration;
+    //     room.timer.running = true;
+
+    //     room.timer.interval = setInterval(() => {
+    //         if (room.timer.timeLeft > 0) {
+    //             room.timer.timeLeft--;
+    //             io.to(roomId).emit("timerUpdate", room.timer.timeLeft);
+    //         } else {
+    //             clearInterval(room.timer.interval);
+    //             room.timer.running = false;
+    //             io.to(roomId).emit("timerEnded");
+    //         }
+    //     }, 1000);
+    //     console.log("room.timer = ", room.timer.timeLeft);
+    //     io.to(roomId).emit("timerUpdate", room.timer.timeLeft);
+    // });
+
+    // socket.on("pauseTimer", ({ roomId }) => {
+    //     const room = rooms.get(roomId);
+    //     if (!room || room.owner !== socket.id) return;
+    //     clearInterval(room.timer.interval);
+    //     room.timer.running = false;
+    // });
 
 
-    socket.on("startTimer", ({ roomId, duration }) => {
-        rooms[roomId] = {
-            players: [],
-            owner: socket.id,
-            timer: {
-                timeLeft: 300, // örnek: 5 dakika
-                running: false,
-                interval: null
+    // socket.on("resumeTimer", ({ roomId }) => {
+    //     const room = rooms.get(roomId);
+    //     if (!room || room.owner !== socket.id) return;
+
+    //     if (!room.timer.running && room.timer.timeLeft > 0) {
+    //         room.timer.running = true;
+    //         room.timer.interval = setInterval(() => {
+    //             if (room.timer.timeLeft > 0) {
+    //                 room.timer.timeLeft--;
+    //                 io.to(roomId).emit("timerUpdate", room.timer.timeLeft);
+    //             } else {
+    //                 clearInterval(room.timer.interval);
+    //                 room.timer.running = false;
+    //                 io.to(roomId).emit("timerEnded");
+    //             }
+    //         }, 1000);
+    //     }
+    // });
+    const rooms = new Map();
+
+    socket.on("startTimer", async ({ roomId, duration, isOwner }) => {
+        try {
+            const room = await models.getRoomById(roomId);
+
+            if (!room) {
+                socket.emit("timerError", { message: "Oda bulunamadı" });
+                return;
             }
-        };
-        const room = rooms[roomId];
-        if (!room || room.owner !== socket.id) return;
 
-        room.timer.timeLeft = duration;
-        room.timer.running = true;
-
-        room.timer.interval = setInterval(() => {
-            if (room.timer.timeLeft > 0) {
-                room.timer.timeLeft--;
-                io.to(roomId).emit("timerUpdate", room.timer.timeLeft);
-            } else {
-                clearInterval(room.timer.interval);
-                room.timer.running = false;
-                io.to(roomId).emit("timerEnded");
+            if (rooms.has(roomId)) {
+                const existingRoom = rooms.get(roomId);
+                if (existingRoom.timer?.interval) {
+                    clearInterval(existingRoom.timer.interval);
+                }
             }
-        }, 1000);
 
-        io.to(roomId).emit("timerUpdate", room.timer.timeLeft);
-    });
+            let roomData = rooms.get(roomId) || {};
 
-    // TIMER DURDUR
-    socket.on("pauseTimer", ({ roomId }) => {
-        const room = rooms[roomId];
-        if (!room || room.owner !== socket.id) return;
-        clearInterval(room.timer.interval);
-        room.timer.running = false;
-    });
+            roomData.timer = {
+                timeLeft: duration,
+                running: true,
+                interval: null,
+                roomId: roomId
+            };
 
-    // TIMER DEVAM ETTİR
-    socket.on("resumeTimer", ({ roomId }) => {
-        const room = rooms[roomId];
-        if (!room || room.owner !== socket.id) return;
-
-        if (!room.timer.running && room.timer.timeLeft > 0) {
-            room.timer.running = true;
-            room.timer.interval = setInterval(() => {
-                if (room.timer.timeLeft > 0) {
-                    room.timer.timeLeft--;
-                    io.to(roomId).emit("timerUpdate", room.timer.timeLeft);
+            roomData.timer.interval = setInterval(() => {
+                if (roomData.timer.timeLeft > 0) {
+                    roomData.timer.timeLeft--;
+                    io.emit("timerUpdate", roomData.timer.timeLeft);
                 } else {
-                    clearInterval(room.timer.interval);
-                    room.timer.running = false;
-                    io.to(roomId).emit("timerEnded");
+                    clearInterval(roomData.timer.interval);
+                    roomData.timer.running = false;
+                    io.emit("timerEnded");
+
+                    delete roomData.timer;
+                    if (Object.keys(roomData).length === 0) {
+                        rooms.delete(roomId);
+                    } else {
+                        rooms.set(roomId, roomData);
+                    }
                 }
             }, 1000);
+
+            rooms.set(roomId, roomData);
+
+            io.emit("timerUpdate", roomData.timer.timeLeft);
+
+        } catch (error) {
+            console.error("startTimer error:", error);
+            socket.emit("timerError", { message: "Timer başlatılamadı: " + error.message });
         }
     });
 
+    socket.on("pauseTimer", ({ roomId }) => {
+        try {
+            const roomData = rooms.get(roomId);
+            if (!roomData || !roomData.timer) {
+                socket.emit("timerError", { message: "Aktif timer bulunamadı" });
+                return;
+            }
 
+            if (roomData.timer.interval) {
+                clearInterval(roomData.timer.interval);
+                roomData.timer.interval = null;
+                roomData.timer.running = false;
+
+                io.emit("timerPaused", roomData.timer.timeLeft);
+            }
+        } catch (error) {
+            console.error("pauseTimer error:", error);
+        }
+    });
+
+    socket.on("resumeTimer", ({ roomId }) => {
+        try {
+            const roomData = rooms.get(roomId);
+
+            if (!roomData || !roomData.timer) {
+                socket.emit("timerError", { message: "Timer bulunamadı" });
+                return;
+            }
+
+            if (!roomData.timer.running && roomData.timer.timeLeft > 0) {
+                roomData.timer.running = true;
+
+                roomData.timer.interval = setInterval(() => {
+                    if (roomData.timer.timeLeft > 0) {
+                        roomData.timer.timeLeft--;
+                        io.emit("timerUpdate", roomData.timer.timeLeft);
+                    } else {
+                        clearInterval(roomData.timer.interval);
+                        roomData.timer.running = false;
+                        io.emit("timerEnded");
+
+                        delete roomData.timer;
+                        if (Object.keys(roomData).length === 0) {
+                            rooms.delete(roomId);
+                        } else {
+                            rooms.set(roomId, roomData);
+                        }
+                    }
+                }, 1000);
+
+                io.emit("timerResumed", roomData.timer.timeLeft);
+            } else {
+                console.log("Timer cannot be resumed:", {
+                    running: roomData.timer.running,
+                    timeLeft: roomData.timer.timeLeft
+                });
+            }
+        } catch (error) {
+            console.error("resumeTimer error:", error);
+            socket.emit("timerError", { message: "Timer devam ettirilemedi: " + error.message });
+        }
+    });
 
 });
 
