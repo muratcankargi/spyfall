@@ -111,7 +111,7 @@ async function addGame(spy_id, keyword) {
     }
 }
 async function getDataByRoomId(roomId) {
-        const client = await pool.connect();
+    const client = await pool.connect();
     try {
         const roomRes = await pool.query(
             'SELECT id, owner_id FROM rooms WHERE id = $1',

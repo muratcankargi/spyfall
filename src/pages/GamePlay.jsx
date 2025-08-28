@@ -303,8 +303,8 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
                                         </Avatar.Root>
                                         <span
                                             className={`font-medium ${player.username === username
-                                                    ? "text-indigo-600"
-                                                    : "text-gray-700"
+                                                ? "text-indigo-600"
+                                                : "text-gray-700"
                                                 }`}
                                         >
                                             {player.username}
@@ -329,8 +329,8 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
                     </h2>
                     <div
                         className={`p-4 rounded-xl text-center text-lg font-bold shadow ${isSpy
-                                ? "bg-red-50 text-red-700"
-                                : "bg-green-50 text-green-700"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-green-50 text-green-700"
                             }`}
                     >
                         {myKeyword}
@@ -347,8 +347,8 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
                                 key={w.name}
                                 onClick={() => toggleWord(w.name)}
                                 className={`p-3 rounded-xl text-center cursor-pointer select-none transition font-medium ${crossedWords.includes(w.name)
-                                        ? "bg-gray-100 line-through text-gray-400"
-                                        : "bg-indigo-50 hover:bg-indigo-100 text-gray-800"
+                                    ? "bg-gray-100 line-through text-gray-400"
+                                    : "bg-indigo-50 hover:bg-indigo-100 text-gray-800"
                                     }`}
                             >
                                 {w.name}
