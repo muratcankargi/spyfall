@@ -18,7 +18,6 @@ const addRoom = async (type_id) => {
     return result.rows[0];
 };
 
-/* ----------------------- USERS ----------------------- */
 const addUser = async (username, rooms_id) => {
     const query = 'INSERT INTO users (username, rooms_id) VALUES ($1, $2) RETURNING *';
     const values = [username, rooms_id];
@@ -26,20 +25,12 @@ const addUser = async (username, rooms_id) => {
     return result.rows[0];
 };
 
-/* ----------------------- GAMES ----------------------- */
-// const addGame = async (spy_id, keyword) => {
-//     const query = 'INSERT INTO games (spy_id, keyword) VALUES ($1, $2) RETURNING *';
-//     const values = [spy_id, keyword];
-//     const result = await pool.query(query, values);
-//     return result.rows[0];
-// };
 
 const createRoomWithUser = async (username, type_id = null) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        // duplicate kontrolü transaction içinde
         const check = await client.query('SELECT 1 FROM users WHERE username = $1', [username]);
         if (check.rowCount > 0) {
             const err = new Error('Kullanıcı adı zaten mevcut.');
