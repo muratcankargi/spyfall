@@ -229,6 +229,10 @@ export default function GameRoom() {
         roomId={roomId}
         gameData={gameData}
         isOwner={isOwner}
+        onBackToRoom={() => {
+          setGameStarted(false);
+          setGameData(null);
+        }}
       />
     );
   }
@@ -266,10 +270,8 @@ export default function GameRoom() {
               Oyunu Başlat
             </button>
           )}
-
         </div>
       </header>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <section>
           <h2 className="text-lg font-medium mb-4">Online Kullanıcılar</h2>
@@ -333,7 +335,7 @@ export default function GameRoom() {
             <p className="text-gray-500">Veriler yükleniyor...</p>
           ) : (
             <div className="space-y-6">
-              {typesData.map((category) => (
+              {typesData.map((category, index) => (
                 <div
                   key={category.title}
                   className="border rounded-lg p-4 shadow-sm bg-white"
@@ -346,20 +348,15 @@ export default function GameRoom() {
                       disabled={!isOwner}
                     />
                     <span
-                      className={`font-semibold ${category.selected === false
-                        ? "line-through text-gray-400"
-                        : ""
+                      className={`font-semibold ${category.selected === false ? "line-through text-gray-400" : ""
                         }`}
                     >
                       {category.title}
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 mb-3">
                     {category.type.map((word) => (
-                      <label
-                        key={word.name}
-                        className="flex items-center gap-2"
-                      >
+                      <label key={word.name} className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={word.selected !== false}
@@ -378,6 +375,47 @@ export default function GameRoom() {
                       </label>
                     ))}
                   </div>
+                  {isOwner && index === typesData.length - 1 && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="text"
+                        placeholder="Yeni kelime ekle..."
+                        className="border rounded px-2 py-1 flex-1 text-sm"
+                        value={category.newWord || ""}
+                        onChange={(e) => {
+                          setTypesData((prev) =>
+                            prev.map((t) =>
+                              t.title === category.title
+                                ? { ...t, newWord: e.target.value }
+                                : t
+                            )
+                          );
+                        }}
+                      />
+                      <button
+                        className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+                        onClick={() => {
+                          if (!category.newWord?.trim()) return;
+                          const updated = typesData.map((t) =>
+                            t.title === category.title
+                              ? {
+                                ...t,
+                                type: [
+                                  ...t.type,
+                                  { name: category.newWord.trim(), selected: true },
+                                ],
+                                newWord: "",
+                              }
+                              : t
+                          );
+                          setTypesData(updated);
+                          socketRef.current.emit("updateTypes", { roomId, updated });
+                        }}
+                      >
+                        Ekle
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
