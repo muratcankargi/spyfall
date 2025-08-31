@@ -6,25 +6,25 @@ import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function GamePlay({ username, users, roomId, gameData, isOwner }) {
+export default function GamePlay({ username, users, roomId, gameData, isOwner, onBackToRoom }) {
     const [crossedWords, setCrossedWords] = useState([]);
     const [timeLeft, setTimeLeft] = useState(0);
     const [voteData, setVoteData] = useState(null);
     const [myVote, setMyVote] = useState(null);
     const [timerRunning, setTimerRunning] = useState(false);
     const [timerError, setTimerError] = useState(null);
+    const [gameResults, setGameResults] = useState(null);
+    const [showResults, setShowResults] = useState(false);
     const socketRef = useRef(null);
+    const [timerDuration, setTimerDuration] = useState(480); // default 8 dakika
 
     useEffect(() => {
-        // Socket bağlantısını component içinde yap
         socketRef.current = io("http://localhost:5001", {
             transports: ["websocket", "polling"],
         });
 
         const socket = socketRef.current;
 
-
-        // Socket event listener'ları kurulum
         const handleTimerUpdate = (newTime) => {
             setTimeLeft(newTime);
         };
@@ -54,37 +54,38 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
         };
 
         const handleShowVote = (data) => {
-            console.log("Vote data received:", data);
             setVoteData(data);
+            setMyVote(null);
         };
 
-        // Event listener'ları ekle
+        const handleVoteResults = (results) => {
+            setGameResults(results);
+            setShowResults(true);
+            setVoteData(null);
+        };
+
         socket.on("timerUpdate", handleTimerUpdate);
         socket.on("timerEnded", handleTimerEnded);
         socket.on("timerPaused", handleTimerPaused);
         socket.on("timerResumed", handleTimerResumed);
         socket.on("timerError", handleTimerError);
         socket.on("showVote", handleShowVote);
+        socket.on("voteResults", handleVoteResults);
 
-        console.log("Socket listeners registered");
-
-        // Component unmount olduğunda cleanup
         return () => {
-            console.log("Cleaning up socket connection");
             socket.off("timerUpdate", handleTimerUpdate);
             socket.off("timerEnded", handleTimerEnded);
             socket.off("timerPaused", handleTimerPaused);
             socket.off("timerResumed", handleTimerResumed);
             socket.off("timerError", handleTimerError);
             socket.off("showVote", handleShowVote);
+            socket.off("voteResults", handleVoteResults);
             socket.disconnect();
         };
     }, []);
 
     useEffect(() => {
-        // Socket bağlantısı kurulduktan sonra room'a join ol
         if (socketRef.current && roomId && username) {
-            console.log("Joining room:", roomId, "with username:", username);
             socketRef.current.emit("joinRoom", { roomId, username });
         }
     }, [roomId, username]);
@@ -95,27 +96,14 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
         );
     };
 
-    if (!gameData) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="animate-pulse text-gray-600">Yükleniyor...</div>
-            </div>
-        );
-    }
-
-    const isSpy = username === gameData.spy_username;
-    const myKeyword = isSpy ? gameData.spy_keyword : gameData.keyword;
-
     const startTimer = () => {
         if (!socketRef.current) {
             console.error("Socket not available");
             return;
         }
 
-        console.log("Starting timer for room:", roomId);
         setTimerRunning(true);
         setTimerError(null);
-        const timerDuration = 480;
         socketRef.current.emit("startTimer", { roomId, duration: timerDuration, isOwner });
     };
 
@@ -154,6 +142,7 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
             voteFor: playerId
         });
         toast.success(`${playerUsername} için oy verildi!`);
+        setVoteData(null);
     };
 
     const endGame = () => {
@@ -188,6 +177,133 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
         );
     };
 
+    const closeResults = () => {
+        setShowResults(false);
+        setGameResults(null);
+        setVoteData(null);
+        setMyVote(null);
+
+        if (onBackToRoom) {
+            onBackToRoom();
+        }
+    };
+
+    if (!gameData) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-gray-50">
+                <div className="animate-pulse text-gray-600">Yükleniyor...</div>
+            </div>
+        );
+    }
+
+    const isSpy = username === gameData.spy_username;
+    const myKeyword = isSpy ? gameData.spy_keyword : gameData.keyword;
+
+    if (showResults && gameResults) {
+        const voteCount = gameResults.voteCount || {};
+        const mostVotedPlayer = Object.entries(voteCount).length > 0
+            ? Object.entries(voteCount).reduce((a, b) => voteCount[a[0]] > voteCount[b[0]] ? a : b)[0]
+            : null;
+
+        const spyWon = mostVotedPlayer !== gameResults.spy_username;
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8 max-h-[90vh] overflow-y-auto">
+                    <div className="text-center">
+                        {/* Oyun Sonucu Başlığı */}
+                        <div className={`p-6 rounded-2xl mb-6 ${spyWon ? 'bg-red-50' : 'bg-green-50'}`}>
+                            <h1 className={`text-3xl font-bold mb-2 ${spyWon ? 'text-red-700' : 'text-green-700'}`}>
+                                {spyWon ? 'CASUS KAZANDI! 🕵️' : 'OYUNCULAR KAZANDI! 🎉'}
+                            </h1>
+                            <div className={`text-lg ${spyWon ? 'text-red-600' : 'text-green-600'}`}>
+                                {spyWon ? 'Casus başarıyla kimliğini gizledi' : 'Casus yakalandı!'}
+                            </div>
+                        </div>
+
+                        {/* Casus Kimliği */}
+                        <div className="bg-gray-50 p-6 rounded-2xl mb-6">
+                            <h2 className="text-xl font-semibold mb-3 text-gray-800">Casus Kimliği</h2>
+                            <div className="bg-red-100 text-red-700 p-4 rounded-xl font-bold text-lg">
+                                🕵️ {gameResults.spy_username}
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-6 rounded-2xl mb-6">
+                            <h2 className="text-xl font-semibold mb-4 text-gray-800">Kelimeler</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-green-100 p-4 rounded-xl">
+                                    <h3 className="font-semibold text-green-800 mb-2">Normal Oyuncular</h3>
+                                    <div className="text-green-700 font-bold text-lg">
+                                        {gameResults.keyword}
+                                    </div>
+                                </div>
+                                <div className="bg-red-100 p-4 rounded-xl">
+                                    <h3 className="font-semibold text-red-800 mb-2">Casus</h3>
+                                    <div className="text-red-700 font-bold text-lg">
+                                        {gameResults.spy_keyword}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-6 rounded-2xl mb-6">
+                            <h2 className="text-xl font-semibold mb-4 text-gray-800">Oylama Sonuçları</h2>
+                            {Object.keys(voteCount).length > 0 ? (
+                                <div className="space-y-2">
+                                    {Object.entries(voteCount)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .map(([playerName, votes]) => (
+                                            <div
+                                                key={playerName}
+                                                className={`flex justify-between items-center p-3 rounded-lg ${playerName === gameResults.spy_username ? 'bg-red-100' : 'bg-blue-50'
+                                                    }`}
+                                            >
+                                                <span className="font-medium">
+                                                    {playerName}
+                                                    {playerName === gameResults.spy_username && ' 🕵️'}
+                                                </span>
+                                                <span className="font-bold text-lg">
+                                                    {votes} oy
+                                                </span>
+                                            </div>
+                                        ))}
+                                </div>
+                            ) : (
+                                <div className="text-gray-500">Oy verisi bulunamadı</div>
+                            )}
+                        </div>
+
+                        {gameResults.votes && gameResults.votes.length > 0 && (
+                            <div className="bg-gray-50 p-6 rounded-2xl mb-6">
+                                <h2 className="text-lg font-semibold mb-4 text-gray-800">Kim Kime Oy Verdi</h2>
+                                <div className="space-y-2 text-sm">
+                                    {gameResults.votes.map((vote, index) => (
+                                        <div key={index} className="flex justify-between items-center p-2 bg-white rounded">
+                                            <span className="font-medium">{vote.voter}</span>
+                                            <span className="text-gray-500">→</span>
+                                            <span className={`font-medium ${vote.votedFor === gameResults.spy_username ? 'text-red-600' : 'text-blue-600'}`}>
+                                                {vote.votedFor}
+                                                {vote.votedFor === gameResults.spy_username && ' 🕵️'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={closeResults}
+                            className="w-full py-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold text-lg"
+                        >
+                            Odaya Geri Dön
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="p-6 max-w-5xl mx-auto min-h-screen bg-gradient-to-br from-indigo-50 to-white rounded-2xl shadow-md">
             <header className="flex items-center justify-between mb-6">
@@ -202,7 +318,6 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
                 </span>
             </header>
 
-            {/* Timer Section */}
             <div className="bg-white rounded-2xl shadow p-4 mb-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -214,6 +329,18 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
                         </h3>
                         <div className={`w-3 h-3 rounded-full ${timerRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
                     </div>
+                    {isOwner && (
+                        <div className="flex items-center gap-2 mt-4">
+                            <input
+                                type="number"
+                                min="10"
+                                value={timerDuration}
+                                onChange={(e) => setTimerDuration(Number(e.target.value))}
+                                className="w-24 px-2 py-1 border rounded"
+                            />
+                            <span className="text-gray-600 text-sm">saniye</span>
+                        </div>
+                    )}
 
                     {isOwner && (
                         <div className="flex gap-2">
@@ -249,7 +376,6 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
                 )}
             </div>
 
-            {/* Vote Modal */}
             {voteData && !myVote && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-2xl shadow-lg w-80 text-center">
@@ -322,7 +448,6 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner })
                     </ScrollArea.Root>
                 </div>
 
-                {/* Game Content */}
                 <div className="col-span-2 bg-white rounded-2xl shadow p-6">
                     <h2 className="text-lg font-semibold mb-4 text-gray-800">
                         Senin Kelimen
