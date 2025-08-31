@@ -146,11 +146,15 @@ app.post('/create-room', async (req, res) => {
     }
 });
 const rooms = new Map();
+const roomVotes = {}; 
+const roomGameData = {};
 
 io.on("connection", (socket) => {
+
     socket.on("joinRoom", async ({ roomId, username }) => {
         try {
             socket.join(roomId);
+            
             const user = await models.getUserByUsername(username);
             if (!user) {
                 socket.emit("joinError", { message: "Kullanıcı bulunamadı." });
@@ -190,24 +194,16 @@ io.on("connection", (socket) => {
             socket.data.roomId = roomId;
             socket.data.username = username;
 
-            if (!roomUsers[roomId]) roomUsers[roomId] = [];
             if (!roomUsers[roomId].some((u) => u.id === socket.id)) {
-                const nameTaken = roomUsers[roomId].some(
-                    (u) => u.username.toLowerCase().trim() === username.toLowerCase().trim()
-                );
-                if (nameTaken) {
-                    socket.emit("joinError", { message: "Bu kullanıcı adı odada mevcut." });
-                    return;
-                }
                 roomUsers[roomId].push({ id: socket.id, username, userId: user.id });
             }
 
             socket.emit("roomOwner", { isOwner, ownerName: ownerUser?.username || null });
-
             io.to(roomId).emit("updateUserList", roomUsers[roomId]);
 
             const types = await models.getAllTypes();
             socket.emit("typesData", types);
+            
         } catch (err) {
             console.error("joinRoom hata:", err);
             socket.emit("joinError", { message: "Sunucu hatası." });
@@ -219,7 +215,6 @@ io.on("connection", (socket) => {
             const usersInRoom = roomUsers[roomId];
             if (!usersInRoom || usersInRoom.length === 0) return;
 
-            // Rastgele casus seç
             const randomUser = usersInRoom[Math.floor(Math.random() * usersInRoom.length)];
             const randomKeyword = words[Math.floor(Math.random() * words.length)];
             let randomSpyKeyword = words[Math.floor(Math.random() * words.length)];
@@ -229,17 +224,19 @@ io.on("connection", (socket) => {
 
             await models.addGame(randomUser.userId, randomKeyword);
             const spy = await models.getUserById(randomUser.userId);
-            io.to(roomId).emit("gameStarted", {
+            
+            roomGameData[roomId] = {
                 spy_username: spy.username,
                 keyword: randomKeyword,
                 spy_keyword: randomSpyKeyword,
                 words: words.map((w) => ({ name: w, selected: true }))
-            });
+            };
+
+            io.to(roomId).emit("gameStarted", roomGameData[roomId]);
         } catch (err) {
             console.error("startGame hatası:", err);
         }
     });
-
 
     socket.on("updateTypes", async ({ roomId, updated }) => {
         io.to(roomId).emit("updateTypes", { updated });
@@ -253,65 +250,99 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("updateUserList", roomUsers[roomId]);
     });
 
-    socket.on("endGame", ({ roomId }) => {
-        io.to(roomId).emit("startVoting");
-    });
-
-    socket.on("submitVote", ({ roomId, username, suspectUsername }) => {
-        const room = rooms[roomId];
-        room.votes.push({ username, votedFor: suspectUsername });
-
-        if (room.votes.length === room.users.length) {
-            const results = {
-                spy: room.spy.username,
-                votes: room.votes
-            };
-            io.to(roomId).emit("voteResults", results);
-        }
-    });
     socket.on("endGame", async ({ roomId }) => {
-        const room = await models.getDataByRoomId(roomId);
-
-        if (!room) return;
-
-        // Herkese oy anketi gönder
-        room.players.forEach(user => {
-            io.emit("showVote", {
-                players: room.players.map(u => ({ id: u.id, username: u.username })),
-            });
-        });
-    });
-
-    socket.on("disconnect", () => {
-        console.log("Socket disconnected:", socket.id);
-
-        // RoomUsers'dan çıkar
-        for (const roomId in roomUsers) {
-            const index = roomUsers[roomId].findIndex(u => u.id === socket.id);
-            if (index !== -1) {
-                roomUsers[roomId].splice(index, 1);
-                io.to(roomId).emit("updateUserList", roomUsers[roomId]);
-
-                // Eğer odada kimse kalmadıysa timer'ı temizle
-                if (roomUsers[roomId].length === 0) {
-                    const roomData = rooms.get(roomId);
-                    if (roomData && roomData.timer && roomData.timer.interval) {
-                        clearInterval(roomData.timer.interval);
-                        rooms.delete(roomId);
-                        console.log(`Room ${roomId} cleaned up - no users left`);
-                    }
-                }
+        try {            
+            const usersInRoom = roomUsers[roomId];
+            if (!usersInRoom || usersInRoom.length === 0) {
+                console.log("No users in room:", roomId);
+                return;
             }
+
+            roomVotes[roomId] = {
+                votes: [],
+                totalPlayers: usersInRoom.length
+            };
+            
+            io.to(roomId).emit("showVote", {
+                players: usersInRoom.map(u => ({ 
+                    id: u.userId, 
+                    username: u.username 
+                }))
+            });
+
+        } catch (error) {
+            console.error("endGame error:", error);
         }
     });
 
+    socket.on("submitVote", async ({ roomId, voter, voteFor }) => {
+        try {
+            if (!roomVotes[roomId]) {
+                roomVotes[roomId] = { votes: [], totalPlayers: 0 };
+            }
+
+            const existingVoteIndex = roomVotes[roomId].votes.findIndex(v => v.voter === voter);
+            if (existingVoteIndex !== -1) {
+                roomVotes[roomId].votes[existingVoteIndex] = { voter, voteFor };
+            } else {
+                roomVotes[roomId].votes.push({ voter, voteFor });
+            }
+
+            const usersInRoom = roomUsers[roomId] || [];
+            if (roomVotes[roomId].votes.length >= usersInRoom.length) {
+
+                const gameData = roomGameData[roomId];
+                if (!gameData) {
+                    console.error("No game data found for room:", roomId);
+                    return;
+                }
+
+                // Oy sonuçlarını hesapla
+                const voteCount = {};
+                roomVotes[roomId].votes.forEach(vote => {
+                    const votedUser = usersInRoom.find(u => u.userId === vote.voteFor);
+                    const votedUsername = votedUser ? votedUser.username : vote.voteFor;
+                    voteCount[votedUsername] = (voteCount[votedUsername] || 0) + 1;
+                });
+
+                const results = {
+                    spy_username: gameData.spy_username,
+                    keyword: gameData.keyword,
+                    spy_keyword: gameData.spy_keyword,
+                    votes: roomVotes[roomId].votes.map(vote => {
+                        const votedUser = usersInRoom.find(u => u.userId === vote.voteFor);
+                        return {
+                            voter: vote.voter,
+                            votedFor: votedUser ? votedUser.username : vote.voteFor
+                        };
+                    }),
+                    voteCount: voteCount
+                };
+
+                io.to(roomId).emit("voteResults", results);
+
+                delete roomVotes[roomId];
+                delete roomGameData[roomId];
+            }
+
+        } catch (error) {
+            console.error("submitVote error:", error);
+        }
+    });
 
     socket.on("startTimer", async ({ roomId, duration, isOwner }) => {
-        try {
+        try {            
             const room = await models.getRoomById(roomId);
             if (!room) {
                 socket.emit("timerError", { message: "Oda bulunamadı" });
                 return;
+            }
+
+            if (rooms.has(roomId)) {
+                const existingRoom = rooms.get(roomId);
+                if (existingRoom.timer?.interval) {
+                    clearInterval(existingRoom.timer.interval);
+                }
             }
 
             let roomData = rooms.get(roomId) || {};
@@ -331,6 +362,7 @@ io.on("connection", (socket) => {
                     clearInterval(roomData.timer.interval);
                     roomData.timer.running = false;
                     io.to(roomId).emit("timerEnded");
+                    
                     delete roomData.timer;
                     if (Object.keys(roomData).length === 0) {
                         rooms.delete(roomId);
@@ -341,11 +373,12 @@ io.on("connection", (socket) => {
             }, 1000);
 
             rooms.set(roomId, roomData);
-
+            
             io.to(roomId).emit("timerUpdate", roomData.timer.timeLeft);
+            
         } catch (error) {
             console.error("startTimer error:", error);
-            socket.to(roomId).emit("timerError", { message: "Timer başlatılamadı: " + error.message });
+            socket.emit("timerError", { message: "Timer başlatılamadı: " + error.message });
         }
     });
     socket.on("pauseTimer", ({ roomId }) => {
@@ -360,7 +393,6 @@ io.on("connection", (socket) => {
                 clearInterval(roomData.timer.interval);
                 roomData.timer.interval = null;
                 roomData.timer.running = false;
-
                 io.to(roomId).emit("timerPaused", roomData.timer.timeLeft);
             }
         } catch (error) {
@@ -371,7 +403,7 @@ io.on("connection", (socket) => {
     socket.on("resumeTimer", ({ roomId }) => {
         try {
             const roomData = rooms.get(roomId);
-
+            
             if (!roomData || !roomData.timer) {
                 socket.emit("timerError", { message: "Timer bulunamadı" });
                 return;
@@ -379,7 +411,7 @@ io.on("connection", (socket) => {
 
             if (!roomData.timer.running && roomData.timer.timeLeft > 0) {
                 roomData.timer.running = true;
-
+                
                 roomData.timer.interval = setInterval(() => {
                     if (roomData.timer.timeLeft > 0) {
                         roomData.timer.timeLeft--;
@@ -388,7 +420,7 @@ io.on("connection", (socket) => {
                         clearInterval(roomData.timer.interval);
                         roomData.timer.running = false;
                         io.to(roomId).emit("timerEnded");
-
+                        
                         delete roomData.timer;
                         if (Object.keys(roomData).length === 0) {
                             rooms.delete(roomId);
@@ -407,10 +439,29 @@ io.on("connection", (socket) => {
             }
         } catch (error) {
             console.error("resumeTimer error:", error);
-            socket.to(roomId).emit("timerError", { message: "Timer devam ettirilemedi: " + error.message });
+            socket.emit("timerError", { message: "Timer devam ettirilemedi: " + error.message });
         }
     });
 
+    socket.on("disconnect", () => {
+        for (const roomId in roomUsers) {
+            const index = roomUsers[roomId].findIndex(u => u.id === socket.id);
+            if (index !== -1) {
+                roomUsers[roomId].splice(index, 1);
+                io.to(roomId).emit("updateUserList", roomUsers[roomId]);
+
+                if (roomUsers[roomId].length === 0) {
+                    const roomData = rooms.get(roomId);
+                    if (roomData && roomData.timer && roomData.timer.interval) {
+                        clearInterval(roomData.timer.interval);
+                        rooms.delete(roomId);
+                    }
+                    delete roomGameData[roomId];
+                    delete roomVotes[roomId];
+                }
+            }
+        }
+    });
 });
 
 app.get('/types', async (req, res) => {
