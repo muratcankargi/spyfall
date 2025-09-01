@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Theme, Button, Text } from "@radix-ui/themes";
+import { Link } from "react-router-dom";
 
 export default function JoinRoom() {
   const [username, setUsername] = useState("");
@@ -104,10 +105,14 @@ export default function JoinRoom() {
               maxLength={4}
             />
           </div>
-
-          <Button type="submit" color="cyan" size="3">
-            Odaya Katıl
-          </Button>
+          <div>
+            <Button type="submit" color="cyan" size="3">
+              Odaya Katıl
+            </Button>
+            <Link to="/" className="float-right">
+              <Button color="orange" size="3">Ana Sayfa</Button>
+            </Link>
+          </div>
         </form>
       </div>
     </Theme>
