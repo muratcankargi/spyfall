@@ -34,6 +34,10 @@ export default function GameRoom() {
   };
 
   useEffect(() => {
+    if (!username) {
+      navigate(`/join-room?code=${roomId}`);
+      return;
+    }
     const fetchTypes = async () => {
       try {
         const res = await fetch(`http://localhost:5001/types`);
@@ -147,7 +151,7 @@ export default function GameRoom() {
   }, []);
 
   const copyLink = async () => {
-    const link = `${window.location.origin}/rooms/${roomId}`;
+    const link = `${window.location.origin}/join-room?code=${roomId}`;
     try {
       await navigator.clipboard.writeText(link);
       setIsCopied(true);
@@ -252,7 +256,7 @@ export default function GameRoom() {
             onClick={copyLink}
             className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition"
           >
-            {isCopied ? "Kopyalandı!" : "Oda Linkini Kopyala"}
+            {isCopied ? "Kopyalandı!" : "Davet Linkini Kopyala"}
           </button>
           <button
             onClick={() => navigate("/")}
