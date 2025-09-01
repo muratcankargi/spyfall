@@ -131,11 +131,11 @@ app.post('/games', async (req, res) => {
 
 app.post('/create-room', async (req, res) => {
     try {
-        const { username, type_id } = req.body;
+        const { username } = req.body;
         if (!username) {
             return res.status(400).json({ message: 'username zorunludur.' });
         }
-        const result = await models.createRoomWithUser(username, type_id);
+        const result = await models.createRoomWithUser(username);
         res.status(201).json(result);
     } catch (err) {
         if (err.code === 'DUPLICATE_USERNAME') {
@@ -146,7 +146,7 @@ app.post('/create-room', async (req, res) => {
     }
 });
 const rooms = new Map();
-const roomVotes = {}; 
+const roomVotes = {};
 const roomGameData = {};
 
 io.on("connection", (socket) => {
@@ -154,7 +154,7 @@ io.on("connection", (socket) => {
     socket.on("joinRoom", async ({ roomId, username }) => {
         try {
             socket.join(roomId);
-            
+
             const user = await models.getUserByUsername(username);
             if (!user) {
                 socket.emit("joinError", { message: "Kullanıcı bulunamadı." });
@@ -203,7 +203,7 @@ io.on("connection", (socket) => {
 
             const types = await models.getAllTypes();
             socket.emit("typesData", types);
-            
+
         } catch (err) {
             console.error("joinRoom hata:", err);
             socket.emit("joinError", { message: "Sunucu hatası." });
@@ -224,7 +224,7 @@ io.on("connection", (socket) => {
 
             await models.addGame(randomUser.userId, randomKeyword);
             const spy = await models.getUserById(randomUser.userId);
-            
+
             roomGameData[roomId] = {
                 spy_username: spy.username,
                 keyword: randomKeyword,
@@ -251,7 +251,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("endGame", async ({ roomId }) => {
-        try {            
+        try {
             const usersInRoom = roomUsers[roomId];
             if (!usersInRoom || usersInRoom.length === 0) {
                 console.log("No users in room:", roomId);
@@ -262,11 +262,11 @@ io.on("connection", (socket) => {
                 votes: [],
                 totalPlayers: usersInRoom.length
             };
-            
+
             io.to(roomId).emit("showVote", {
-                players: usersInRoom.map(u => ({ 
-                    id: u.userId, 
-                    username: u.username 
+                players: usersInRoom.map(u => ({
+                    id: u.userId,
+                    username: u.username
                 }))
             });
 
@@ -331,7 +331,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("startTimer", async ({ roomId, duration, isOwner }) => {
-        try {            
+        try {
             const room = await models.getRoomById(roomId);
             if (!room) {
                 socket.emit("timerError", { message: "Oda bulunamadı" });
@@ -362,7 +362,7 @@ io.on("connection", (socket) => {
                     clearInterval(roomData.timer.interval);
                     roomData.timer.running = false;
                     io.to(roomId).emit("timerEnded");
-                    
+
                     delete roomData.timer;
                     if (Object.keys(roomData).length === 0) {
                         rooms.delete(roomId);
@@ -373,9 +373,9 @@ io.on("connection", (socket) => {
             }, 1000);
 
             rooms.set(roomId, roomData);
-            
+
             io.to(roomId).emit("timerUpdate", roomData.timer.timeLeft);
-            
+
         } catch (error) {
             console.error("startTimer error:", error);
             socket.emit("timerError", { message: "Timer başlatılamadı: " + error.message });
@@ -403,7 +403,7 @@ io.on("connection", (socket) => {
     socket.on("resumeTimer", ({ roomId }) => {
         try {
             const roomData = rooms.get(roomId);
-            
+
             if (!roomData || !roomData.timer) {
                 socket.emit("timerError", { message: "Timer bulunamadı" });
                 return;
@@ -411,7 +411,7 @@ io.on("connection", (socket) => {
 
             if (!roomData.timer.running && roomData.timer.timeLeft > 0) {
                 roomData.timer.running = true;
-                
+
                 roomData.timer.interval = setInterval(() => {
                     if (roomData.timer.timeLeft > 0) {
                         roomData.timer.timeLeft--;
@@ -420,7 +420,7 @@ io.on("connection", (socket) => {
                         clearInterval(roomData.timer.interval);
                         roomData.timer.running = false;
                         io.to(roomId).emit("timerEnded");
-                        
+
                         delete roomData.timer;
                         if (Object.keys(roomData).length === 0) {
                             rooms.delete(roomId);

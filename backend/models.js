@@ -10,10 +10,10 @@ const addType = async (title, typeArray) => {
 };
 
 /* ----------------------- ROOMS ----------------------- */
-const addRoom = async (type_id) => {
+const addRoom = async () => {
     const id = generateRoomId();
-    const query = 'INSERT INTO rooms (id, type_id) VALUES ($1, $2) RETURNING *';
-    const values = [id, type_id];
+    const query = 'INSERT INTO rooms (id) VALUES ($1) RETURNING *';
+    const values = [id];
     const result = await pool.query(query, values);
     return result.rows[0];
 };
@@ -26,7 +26,7 @@ const addUser = async (username, rooms_id) => {
 };
 
 
-const createRoomWithUser = async (username, type_id = null) => {
+const createRoomWithUser = async (username) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -45,8 +45,8 @@ const createRoomWithUser = async (username, type_id = null) => {
 
         const id = generateRoomId();
         const roomRes = await client.query(
-            'INSERT INTO rooms (id, type_id, owner_id) VALUES ($1, $2, $3) RETURNING *',
-            [id, type_id, ownerId]
+            'INSERT INTO rooms (id, owner_id) VALUES ($1, $2) RETURNING *',
+            [id, ownerId]
         );
 
         await client.query(
