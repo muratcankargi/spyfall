@@ -18,8 +18,10 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
     const socketRef = useRef(null);
     const [timerDuration, setTimerDuration] = useState(480); // default 8 dakika
 
+    const API_URL = process.env.REACT_APP_API_URL;
+
     useEffect(() => {
-        socketRef.current = io("http://localhost:5001", {
+        socketRef.current = io(`${API_URL}`, {
             transports: ["websocket", "polling"],
         });
 

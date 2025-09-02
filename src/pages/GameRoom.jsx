@@ -21,6 +21,7 @@ export default function GameRoom() {
   const [gameStarted, setGameStarted] = useState(false);
   const [gameData, setGameData] = useState(null);
   const socketRef = useRef(null);
+  const API_URL = process.env.REACT_APP_API_URL;
 
   const nameToColor = (name) => {
     if (!name) return "#CBD5E1";
@@ -40,7 +41,7 @@ export default function GameRoom() {
     }
     const fetchTypes = async () => {
       try {
-        const res = await fetch(`http://localhost:5001/types`);
+        const res = await fetch(`${API_URL}/types`);
         if (!res.ok) throw new Error("Types verisi alınamadı");
         const data = await res.json();
 
@@ -73,7 +74,7 @@ export default function GameRoom() {
 
     localStorage.setItem("username", username);
 
-    const socket = io("http://localhost:5001", {
+    const socket = io(`${API_URL}`, {
       transports: ["websocket", "polling"],
     });
     socketRef.current = socket;

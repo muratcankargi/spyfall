@@ -9,6 +9,7 @@ export default function JoinRoom() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     const roomFromUrl = searchParams.get("code") || searchParams.get("");
@@ -28,13 +29,13 @@ export default function JoinRoom() {
     }
 
     try {
-      const roomRes = await fetch(`http://localhost:5001/rooms/${roomId}`);
+      const roomRes = await fetch(`${API_URL}/rooms/${roomId}`);
       if (!roomRes.ok) {
         setError("Geçersiz oda numarası.");
         return;
       }
 
-      const userRes = await fetch("http://localhost:5001/users", {
+      const userRes = await fetch(`${API_URL}/users`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, rooms_id: roomId }),
