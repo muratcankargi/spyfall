@@ -1,42 +1,39 @@
 const http = require('http');
 const { Server } = require('socket.io');
-
+require("dotenv").config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const models = require('./models');
-const port = 5001;
+const cors = require('cors');
+
 const roomUsers = {};
 
-const cors = require('cors');
+const port = process.env.PORT;
+const backend_url = process.env.BACKEND_URL;
+const cors_url = process.env.CORS_URL;
 
 const app = express();
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: cors_url,
     methods: ["GET", "POST"]
 }));
+app.use(bodyParser.json());
+app.use(express.json());
 
 const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: cors_url,
         methods: ["GET", "POST"]
     }
 });
 
-app.use(bodyParser.json());
-app.use(cors({
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
-}));
-
-app.use(express.json());
 /* ---------- POST /types ---------- */
 app.post('/types', async (req, res) => {
     try {
         const { title, type } = req.body;
 
-        // Gelen `type` mutlaka dizi olmalı
         if (!title || !Array.isArray(type)) {
             return res.status(400).json({ message: 'title ve type (dizi) zorunludur.' });
         }
@@ -475,5 +472,5 @@ app.get('/types', async (req, res) => {
 });
 
 server.listen(port, () => {
-    console.log(`API sunucusu çalışıyor: http://localhost:${port}`);
+    console.log(`API sunucusu çalışıyor: ${backend_url}`);
 });
