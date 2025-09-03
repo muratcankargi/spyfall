@@ -26,6 +26,7 @@ jobs:
           host: 89.213.56.58
           username: root   # sunucuda kullandığın kullanıcı adını buraya yaz
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 6060
           script: |
             # Repo yoksa clone et, varsa güncelle
             if [ ! -d ~/spyfall ]; then
