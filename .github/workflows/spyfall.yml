@@ -1,17 +1,53 @@
-name: Spyfall-Super-Linter
+name: Deploy to Server
 
-on: push
+on:
+  push:
+    branches:
+      - main   # sadece main branch'e push olunca çalışacak
 
 jobs:
-  super-lint:
-    name: Lint code base
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Run Super-Linter
-        uses: github/super-linter@v4
-        env:
-          DEFAULT_BRANCH: main
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # ---------- REACT BUILD ----------
+      - name: Build React App
+        run: |
+          cd spyfall
+          npm install
+          npm run build
+
+      # ---------- DEPLOY TO SERVER ----------
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: 89.213.56.58
+          username: ubuntu   # sunucuda kullandığın kullanıcı adını buraya yaz
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Repo yoksa clone et, varsa güncelle
+            if [ ! -d ~/spyfall ]; then
+              git clone https://github.com/muratcankargi/spyfall ~/spyfall
+            fi
+            cd ~/spyfall
+            git pull origin main
+
+            # -------- BACKEND --------
+            cd spyfall/backend
+            npm install
+            pm2 restart backend || pm2 start index.js --name backend
+
+            # -------- FRONTEND --------
+            cd ../frontend
+            npm install
+            npm run build
+
+            # Build klasörünü Nginx'in root dizinine kopyala
+            sudo rm -rf /var/www/html/*
+            sudo cp -r build/* /var/www/html/
+
+            # Nginx restart
+            sudo systemctl restart nginx
