@@ -24,7 +24,7 @@ jobs:
         uses: appleboy/ssh-action@v0.1.6
         with:
           host: 89.213.56.58
-          username: ubuntu   # sunucuda kullandığın kullanıcı adını buraya yaz
+          username: root   # sunucuda kullandığın kullanıcı adını buraya yaz
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             # Repo yoksa clone et, varsa güncelle
