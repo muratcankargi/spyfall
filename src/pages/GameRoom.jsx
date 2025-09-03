@@ -11,7 +11,7 @@ export default function GameRoom() {
 
   const initialUsername =
     location.state?.username || localStorage.getItem("username") || "";
-  const [username, setUsername] = useState(initialUsername);
+  const [username] = useState(initialUsername);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -45,18 +45,6 @@ export default function GameRoom() {
         if (!res.ok) throw new Error("Types verisi alınamadı");
         const data = await res.json();
 
-        const normalized = Array.isArray(data)
-          ? data.map((cat) => ({
-            title: cat.title,
-            selected: cat.selected !== false,
-            type: (cat.type || []).map((w) =>
-              typeof w === "string"
-                ? { name: w, selected: true }
-                : { name: w.name, selected: w.selected !== false }
-            ),
-          }))
-          : [];
-
         setTypesData(data);
       } catch (err) {
         console.error(err);
@@ -64,7 +52,7 @@ export default function GameRoom() {
       }
     };
     fetchTypes();
-  }, [roomId]);
+  }, [roomId, API_URL, navigate, username]);
 
   useEffect(() => {
     if (!username) {
@@ -127,7 +115,7 @@ export default function GameRoom() {
         socketRef.current.disconnect();
       }
     };
-  }, [roomId, username, navigate]);
+  }, [roomId, username, navigate, API_URL]);
 
   useEffect(() => {
     if (!socketRef.current) return;

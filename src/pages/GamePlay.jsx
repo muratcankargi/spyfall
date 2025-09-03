@@ -86,6 +86,7 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
         };
     }, [API_URL]);
 
+    
     useEffect(() => {
         if (socketRef.current && roomId && username) {
             socketRef.current.emit("joinRoom", { roomId, username });

@@ -1,4 +1,3 @@
-import './App.css';
 import CreateRoom from './pages/CreateRoom';
 import HomePage from './pages/HomePage';
 import GameRoom from './pages/GameRoom';
