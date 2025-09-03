@@ -16,7 +16,6 @@ jobs:
       # ---------- REACT BUILD ----------
       - name: Build React App
         run: |
-          cd spyfall
           npm install
           npm run build
 
