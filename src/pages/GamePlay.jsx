@@ -84,7 +84,7 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
             socket.off("voteResults", handleVoteResults);
             socket.disconnect();
         };
-    }, []);
+    }, [API_URL]);
 
     useEffect(() => {
         if (socketRef.current && roomId && username) {
