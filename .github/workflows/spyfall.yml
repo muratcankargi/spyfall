@@ -20,34 +20,27 @@ jobs:
           CI=false npm run build
 
       # ---------- DEPLOY TO SERVER ----------
-      - name: Deploy via SSH
+      - name: Deploy to Server
         uses: appleboy/ssh-action@v0.1.6
         with:
-          host: 89.213.56.58
-          username: root   # sunucuda kullandığın kullanıcı adını buraya yaz
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 6060
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT }}
           script: |
-            # Repo yoksa clone et, varsa güncelle
             if [ ! -d ~/spyfall ]; then
               git clone https://github.com/muratcankargi/spyfall ~/spyfall
             fi
             cd ~/spyfall
             git pull origin main
-
             # -------- BACKEND --------
             cd spyfall/backend
             npm install
             pm2 restart backend || pm2 start index.js --name backend
-
             # -------- FRONTEND --------
             cd ../frontend
             npm install
             npm run build
-
-            # Build klasörünü Nginx'in root dizinine kopyala
             sudo rm -rf /var/www/html/*
             sudo cp -r build/* /var/www/html/
-
-            # Nginx restart
             sudo systemctl restart nginx
