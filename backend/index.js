@@ -9,12 +9,17 @@ const cors = require('cors');
 const roomUsers = {};
 
 const port = process.env.PORT;
-const backend_url = process.env.BACKEND_URL;
 const cors_url = process.env.CORS_URL;
+const cors_url_2 = process.env.CORS_URL_2;
+const cors_url_3 = process.env.CORS_URL_3;
 
 const app = express();
 app.use(cors({
-    origin: cors_url,
+    origin: [
+        cors_url,
+        cors_url_2,
+        cors_url_3
+    ],
     methods: ["GET", "POST"]
 }));
 app.use(bodyParser.json());
@@ -24,7 +29,11 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: cors_url,
+        origin: [
+            cors_url,
+            cors_url_2,
+            cors_url_3
+        ],
         methods: ["GET", "POST"]
     }
 });
@@ -472,5 +481,5 @@ app.get('/types', async (req, res) => {
 });
 
 server.listen(port, () => {
-    console.log(`API sunucusu çalışıyor: ${backend_url}`);
+    console.log(`API sunucusu çalışıyor: hhtp://localhost:${port}`);
 });
