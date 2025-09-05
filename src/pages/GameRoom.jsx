@@ -62,9 +62,11 @@ export default function GameRoom() {
 
     localStorage.setItem("username", username);
 
-    const socket = io(`${API_URL}`, {
+    const socket = io(`${API_URL.replace('/api', '')}`, {
+      path: '/socket.io',
       transports: ["websocket", "polling"],
     });
+
     socketRef.current = socket;
 
     socket.on("connect", () => {
