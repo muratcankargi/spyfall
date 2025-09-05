@@ -39,7 +39,7 @@ const io = new Server(server, {
 });
 
 /* ---------- POST /types ---------- */
-app.post('/types', async (req, res) => {
+app.post('/api/types', async (req, res) => {
     try {
         const { title, type } = req.body;
 
@@ -57,7 +57,7 @@ app.post('/types', async (req, res) => {
 
 
 /* ---------- POST /rooms ---------- */
-app.post('/rooms', async (req, res) => {
+app.post('/api/rooms', async (req, res) => {
     try {
         const { type_id } = req.body;
         if (!type_id) {
@@ -72,7 +72,7 @@ app.post('/rooms', async (req, res) => {
     }
 });
 
-app.get('/rooms/:id', async (req, res) => {
+app.get('/api/rooms/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { username } = req.query;
@@ -102,7 +102,7 @@ app.get('/rooms/:id', async (req, res) => {
 
 
 /* ---------- POST /users ---------- */
-app.post('/users', async (req, res) => {
+app.post('/api/users', async (req, res) => {
     try {
         const { username, rooms_id } = req.body;
         if (!username || !rooms_id) {
@@ -121,7 +121,7 @@ app.post('/users', async (req, res) => {
 });
 
 /* ---------- POST /games ---------- */
-app.post('/games', async (req, res) => {
+app.post('/api/games', async (req, res) => {
     try {
         const { spy_id, keyword } = req.body;
         if (!spy_id || !keyword) {
@@ -135,7 +135,7 @@ app.post('/games', async (req, res) => {
     }
 });
 
-app.post('/create-room', async (req, res) => {
+app.post('/api/create-room', async (req, res) => {
     try {
         const { username } = req.body;
         if (!username) {
@@ -470,7 +470,7 @@ io.on("connection", (socket) => {
     });
 });
 
-app.get('/types', async (req, res) => {
+app.get('/api/types', async (req, res) => {
     try {
         const types = await models.getAllTypes();
         res.json(types);
