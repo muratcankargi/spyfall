@@ -21,11 +21,12 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
     const API_URL = process.env.REACT_APP_API_URL;
 
     useEffect(() => {
-        socketRef.current = io(`${API_URL}`, {
+        const socket = io(`${API_URL.replace('/api', '')}`, {
+            path: '/socket.io',
             transports: ["websocket", "polling"],
         });
 
-        const socket = socketRef.current;
+        socketRef.current = socket
 
         const handleTimerUpdate = (newTime) => {
             setTimeLeft(newTime);
@@ -86,7 +87,7 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
         };
     }, [API_URL]);
 
-    
+
     useEffect(() => {
         if (socketRef.current && roomId && username) {
             socketRef.current.emit("joinRoom", { roomId, username });
