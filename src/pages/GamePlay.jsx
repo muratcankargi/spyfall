@@ -186,6 +186,9 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
         setGameResults(null);
         setVoteData(null);
         setMyVote(null);
+        
+        // Oyun bittiğinde localStorage'ı da temizle
+        localStorage.removeItem(`gameData_${roomId}`);
 
         if (onBackToRoom) {
             onBackToRoom();
@@ -194,8 +197,8 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
 
     if (!gameData) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="animate-pulse text-gray-600">Yükleniyor...</div>
+            <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
+                <div className="animate-pulse text-gray-600 text-center">Yükleniyor...</div>
             </div>
         );
     }
@@ -212,47 +215,47 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
         const spyWon = mostVotedPlayer !== gameResults.spy_username;
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl mx-4 p-8 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl mx-auto p-4 sm:p-8 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
                     <div className="text-center">
                         {/* Oyun Sonucu Başlığı */}
-                        <div className={`p-6 rounded-2xl mb-6 ${spyWon ? 'bg-red-50' : 'bg-green-50'}`}>
-                            <h1 className={`text-3xl font-bold mb-2 ${spyWon ? 'text-red-700' : 'text-green-700'}`}>
+                        <div className={`p-4 sm:p-6 rounded-2xl mb-4 sm:mb-6 ${spyWon ? 'bg-red-50' : 'bg-green-50'}`}>
+                            <h1 className={`text-2xl sm:text-3xl font-bold mb-2 ${spyWon ? 'text-red-700' : 'text-green-700'}`}>
                                 {spyWon ? 'CASUS KAZANDI! 🕵️' : 'OYUNCULAR KAZANDI! 🎉'}
                             </h1>
-                            <div className={`text-lg ${spyWon ? 'text-red-600' : 'text-green-600'}`}>
+                            <div className={`text-base sm:text-lg ${spyWon ? 'text-red-600' : 'text-green-600'}`}>
                                 {spyWon ? 'Casus başarıyla kimliğini gizledi' : 'Casus yakalandı!'}
                             </div>
                         </div>
 
                         {/* Casus Kimliği */}
-                        <div className="bg-gray-50 p-6 rounded-2xl mb-6">
-                            <h2 className="text-xl font-semibold mb-3 text-gray-800">Casus Kimliği</h2>
-                            <div className="bg-red-100 text-red-700 p-4 rounded-xl font-bold text-lg">
+                        <div className="bg-gray-50 p-4 sm:p-6 rounded-2xl mb-4 sm:mb-6">
+                            <h2 className="text-lg sm:text-xl font-semibold mb-3 text-gray-800">Casus Kimliği</h2>
+                            <div className="bg-red-100 text-red-700 p-3 sm:p-4 rounded-xl font-bold text-base sm:text-lg">
                                 🕵️ {gameResults.spy_username}
                             </div>
                         </div>
 
-                        <div className="bg-gray-50 p-6 rounded-2xl mb-6">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-800">Kelimeler</h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-green-100 p-4 rounded-xl">
-                                    <h3 className="font-semibold text-green-800 mb-2">Normal Oyuncular</h3>
-                                    <div className="text-green-700 font-bold text-lg">
+                        <div className="bg-gray-50 p-4 sm:p-6 rounded-2xl mb-4 sm:mb-6">
+                            <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800">Kelimeler</h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                <div className="bg-green-100 p-3 sm:p-4 rounded-xl">
+                                    <h3 className="font-semibold text-green-800 mb-2 text-sm sm:text-base">Normal Oyuncular</h3>
+                                    <div className="text-green-700 font-bold text-base sm:text-lg">
                                         {gameResults.keyword}
                                     </div>
                                 </div>
-                                <div className="bg-red-100 p-4 rounded-xl">
-                                    <h3 className="font-semibold text-red-800 mb-2">Casus</h3>
-                                    <div className="text-red-700 font-bold text-lg">
+                                <div className="bg-red-100 p-3 sm:p-4 rounded-xl">
+                                    <h3 className="font-semibold text-red-800 mb-2 text-sm sm:text-base">Casus</h3>
+                                    <div className="text-red-700 font-bold text-base sm:text-lg">
                                         {gameResults.spy_keyword}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-gray-50 p-6 rounded-2xl mb-6">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-800">Oylama Sonuçları</h2>
+                        <div className="bg-gray-50 p-4 sm:p-6 rounded-2xl mb-4 sm:mb-6">
+                            <h2 className="text-lg sm:text-xl font-semibold mb-4 text-gray-800">Oylama Sonuçları</h2>
                             {Object.keys(voteCount).length > 0 ? (
                                 <div className="space-y-2">
                                     {Object.entries(voteCount)
@@ -263,25 +266,25 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                                                 className={`flex justify-between items-center p-3 rounded-lg ${playerName === gameResults.spy_username ? 'bg-red-100' : 'bg-blue-50'
                                                     }`}
                                             >
-                                                <span className="font-medium">
+                                                <span className="font-medium text-sm sm:text-base">
                                                     {playerName}
                                                     {playerName === gameResults.spy_username && ' 🕵️'}
                                                 </span>
-                                                <span className="font-bold text-lg">
+                                                <span className="font-bold text-base sm:text-lg">
                                                     {votes} oy
                                                 </span>
                                             </div>
                                         ))}
                                 </div>
                             ) : (
-                                <div className="text-gray-500">Oy verisi bulunamadı</div>
+                                <div className="text-gray-500 text-sm sm:text-base">Oy verisi bulunamadı</div>
                             )}
                         </div>
 
                         {gameResults.votes && gameResults.votes.length > 0 && (
-                            <div className="bg-gray-50 p-6 rounded-2xl mb-6">
-                                <h2 className="text-lg font-semibold mb-4 text-gray-800">Kim Kime Oy Verdi</h2>
-                                <div className="space-y-2 text-sm">
+                            <div className="bg-gray-50 p-4 sm:p-6 rounded-2xl mb-4 sm:mb-6">
+                                <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-800">Kim Kime Oy Verdi</h2>
+                                <div className="space-y-2 text-xs sm:text-sm">
                                     {gameResults.votes.map((vote, index) => (
                                         <div key={index} className="flex justify-between items-center p-2 bg-white rounded">
                                             <span className="font-medium">{vote.voter}</span>
@@ -298,7 +301,7 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
 
                         <button
                             onClick={closeResults}
-                            className="w-full py-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold text-lg"
+                            className="w-full py-3 sm:py-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition font-semibold text-base sm:text-lg"
                         >
                             Odaya Geri Dön
                         </button>
@@ -309,23 +312,19 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
     }
 
     return (
-        <div className="p-6 max-w-5xl mx-auto min-h-screen bg-gradient-to-br from-indigo-50 to-white rounded-2xl shadow-md">
-            <header className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">
+        <div className="p-3 sm:p-6 max-w-5xl mx-auto min-h-screen bg-gradient-to-br from-indigo-50 to-white rounded-xl sm:rounded-2xl shadow-md">
+            {/* Header */}
+            <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
                     Oda <span className="text-indigo-600">#{roomId}</span>
                 </h1>
-                <span
-                    className={`px-3 py-1 text-sm rounded-full font-medium ${isSpy ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-                        }`}
-                >
-                    {isSpy ? "Casus" : "Normal Oyuncu"}
-                </span>
             </header>
 
-            <div className="bg-white rounded-2xl shadow p-4 mb-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <h3 className="text-lg font-semibold">
+            {/* Timer Section */}
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow p-3 sm:p-4 mb-4 sm:mb-6">
+                <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <h3 className="text-base sm:text-lg font-semibold">
                             Kalan Süre:
                             <span className={`ml-2 ${timeLeft <= 60 ? 'text-red-600' : 'text-green-600'}`}>
                                 {formatTime(timeLeft)}
@@ -333,38 +332,44 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                         </h3>
                         <div className={`w-3 h-3 rounded-full ${timerRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
                     </div>
+                    
+                    {/* Timer Duration Slider (Only for Owner) */}
                     {isOwner && (
-                        <div className="flex items-center gap-2 mt-4">
+                        <div className="flex items-center gap-2 sm:gap-4">
                             <input
-                                type="number"
-                                min="10"
-                                value={timerDuration}
-                                onChange={(e) => setTimerDuration(Number(e.target.value))}
-                                className="w-24 px-2 py-1 border rounded"
+                                type="range"
+                                min="2"
+                                max="20"
+                                value={Math.floor(timerDuration / 60)}
+                                onChange={(e) => setTimerDuration(Number(e.target.value) * 60)}
+                                className="w-32 sm:w-48"
                             />
-                            <span className="text-gray-600 text-sm">saniye</span>
+                            <span className="text-gray-600 text-xs sm:text-sm whitespace-nowrap">
+                                {Math.floor(timerDuration / 60)} dakika
+                            </span>
                         </div>
                     )}
 
+                    {/* Timer Controls (Only for Owner) */}
                     {isOwner && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             <button
                                 onClick={startTimer}
-                                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                                className="px-3 sm:px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 text-xs sm:text-sm"
                                 disabled={timerRunning && timeLeft > 0}
                             >
                                 Başlat
                             </button>
                             <button
                                 onClick={pauseTimer}
-                                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50"
+                                className="px-3 sm:px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 text-xs sm:text-sm"
                                 disabled={!timerRunning}
                             >
                                 Duraklat
                             </button>
                             <button
                                 onClick={resumeTimer}
-                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                                className="px-3 sm:px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 text-xs sm:text-sm"
                                 disabled={timerRunning}
                             >
                                 Devam Et
@@ -374,23 +379,24 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                 </div>
 
                 {timerError && (
-                    <div className="mt-2 p-2 bg-red-100 text-red-700 rounded">
+                    <div className="mt-2 p-2 bg-red-100 text-red-700 rounded text-sm">
                         Hata: {timerError}
                     </div>
                 )}
             </div>
 
+            {/* Vote Modal */}
             {voteData && !myVote && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-2xl shadow-lg w-80 text-center">
-                        <h2 className="text-lg font-bold mb-4">Casus olduğunu düşündüğün kişiyi seç</h2>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg w-full max-w-sm text-center">
+                        <h2 className="text-base sm:text-lg font-bold mb-4">Casus olduğunu düşündüğün kişiyi seç</h2>
                         <ul className="space-y-2">
                             {voteData.players
                                 .filter(p => p.username !== username) // kendini seçemez
                                 .map(p => (
                                     <li key={p.id}>
                                         <button
-                                            className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 rounded font-medium transition"
+                                            className="w-full py-2 sm:py-3 bg-indigo-50 hover:bg-indigo-100 rounded font-medium transition text-sm sm:text-base"
                                             onClick={() => handleVote(p.id, p.username)}
                                         >
                                             {p.username}
@@ -402,23 +408,24 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Players Section */}
-                <div className="col-span-1 bg-white rounded-2xl shadow p-4">
-                    <h2 className="text-lg font-semibold mb-3 text-gray-700">
+                <div className="order-2 lg:order-1 col-span-1 bg-white rounded-xl sm:rounded-2xl shadow p-3 sm:p-4">
+                    <h2 className="text-base sm:text-lg font-semibold mb-3 text-gray-700">
                         Oyuncular
                     </h2>
                     <Separator.Root className="bg-gray-200 h-px w-full mb-3" />
 
-                    <ScrollArea.Root className="h-64 overflow-hidden">
-                        <ScrollArea.Viewport className="h-full pr-3">
-                            <ul className="space-y-3">
+                    <ScrollArea.Root className="h-48 sm:h-64 overflow-hidden">
+                        <ScrollArea.Viewport className="h-full pr-2 sm:pr-3">
+                            <ul className="space-y-2 sm:space-y-3">
                                 {users.map((player) => (
                                     <li
                                         key={player.id}
-                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition"
+                                        className="flex items-center gap-2 sm:gap-3 p-2 rounded-lg hover:bg-gray-50 transition"
                                     >
-                                        <Avatar.Root className="w-10 h-10 rounded-full overflow-hidden border">
+                                        <Avatar.Root className="w-8 sm:w-10 h-8 sm:h-10 rounded-full overflow-hidden border">
                                             {player.avatarUrl ? (
                                                 <Avatar.Image
                                                     src={player.avatarUrl}
@@ -426,13 +433,13 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                                                     className="w-full h-full object-cover"
                                                 />
                                             ) : (
-                                                <Avatar.Fallback className="flex items-center justify-center w-full h-full bg-indigo-100 text-indigo-600 font-bold">
+                                                <Avatar.Fallback className="flex items-center justify-center w-full h-full bg-indigo-100 text-indigo-600 font-bold text-xs sm:text-sm">
                                                     {player.username.charAt(0).toUpperCase()}
                                                 </Avatar.Fallback>
                                             )}
                                         </Avatar.Root>
                                         <span
-                                            className={`font-medium ${player.username === username
+                                            className={`font-medium text-sm sm:text-base ${player.username === username
                                                 ? "text-indigo-600"
                                                 : "text-gray-700"
                                                 }`}
@@ -452,30 +459,26 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                     </ScrollArea.Root>
                 </div>
 
-                <div className="col-span-2 bg-white rounded-2xl shadow p-6">
-                    <h2 className="text-lg font-semibold mb-4 text-gray-800">
+                {/* Game Content Section */}
+                <div className="order-1 lg:order-2 col-span-1 lg:col-span-2 bg-white rounded-xl sm:rounded-2xl shadow p-4 sm:p-6">
+                    <h2 className="text-base sm:text-lg font-semibold mb-4 text-gray-800">
                         Senin Kelimen
                     </h2>
-                    <div
-                        className={`p-4 rounded-xl text-center text-lg font-bold shadow ${isSpy
-                            ? "bg-red-50 text-red-700"
-                            : "bg-green-50 text-green-700"
-                            }`}
-                    >
+                    <div className="p-3 sm:p-4 rounded-xl text-center text-base sm:text-lg font-bold shadow bg-red-50 text-red-700">
                         {myKeyword}
                     </div>
 
-                    <Separator.Root className="bg-gray-200 h-px w-full my-6" />
+                    <Separator.Root className="bg-gray-200 h-px w-full my-4 sm:my-6" />
 
-                    <h3 className="text-md font-semibold mb-3 text-gray-700">
+                    <h3 className="text-sm sm:text-md font-semibold mb-3 text-gray-700">
                         Oyun Kelimeleri
                     </h3>
-                    <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                         {gameData.words.map((w) => (
                             <li
                                 key={w.name}
                                 onClick={() => toggleWord(w.name)}
-                                className={`p-3 rounded-xl text-center cursor-pointer select-none transition font-medium ${crossedWords.includes(w.name)
+                                className={`p-2 sm:p-3 rounded-lg sm:rounded-xl text-center cursor-pointer select-none transition font-medium text-xs sm:text-sm ${crossedWords.includes(w.name)
                                     ? "bg-gray-100 line-through text-gray-400"
                                     : "bg-indigo-50 hover:bg-indigo-100 text-gray-800"
                                     }`}
@@ -485,11 +488,12 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                         ))}
                     </ul>
 
+                    {/* End Game Button (Only for Owner) */}
                     {isOwner && (
-                        <div className="mt-6">
+                        <div className="mt-4 sm:mt-6">
                             <button
                                 onClick={endGame}
-                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition text-sm sm:text-base"
                             >
                                 Oyunu Bitir
                             </button>
@@ -498,7 +502,8 @@ export default function GamePlay({ username, users, roomId, gameData, isOwner, o
                 </div>
             </div>
 
-            <footer className="mt-8 text-sm text-gray-500 flex justify-between">
+            {/* Footer */}
+            <footer className="mt-6 sm:mt-8 text-xs sm:text-sm text-gray-500 flex flex-col sm:flex-row justify-between gap-2">
                 <span>Oyuncu: {username}</span>
                 <span>{isOwner ? "Oda Sahibi: Evet" : ""}</span>
             </footer>
